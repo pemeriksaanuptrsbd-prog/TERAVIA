@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TERAVIA</title>
+<meta name="theme-color" content="#1a3fae">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TERAVIA">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:#e9effc;font-family:system-ui,Arial,sans-serif;color:#10224f}
+#app{position:fixed;top:0;right:0;bottom:0;left:0;width:100%;height:100%;border:0;background:#e9effc}
+.layar{position:fixed;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;padding:20px;text-align:center}
+.layar.tampil{display:flex}
+.kartu{background:#fff;border-radius:22px;padding:28px 24px;max-width:420px;width:100%;box-shadow:0 10px 30px rgba(26,63,174,.15)}
+.kartu img{width:72px;height:72px;border-radius:16px}
+h1{font-size:20px;margin:12px 0 6px}p{margin:6px 0 14px;line-height:1.5;font-size:14px}
+input{width:100%;padding:12px;border:1px solid #b9c7ee;border-radius:12px;font-size:14px;margin-bottom:12px}
+button{background:#1a3fae;color:#fff;border:0;border-radius:12px;padding:12px 20px;font-size:15px;font-weight:600;cursor:pointer}
+button.pu{background:#e4ecff;color:#1a3fae}
+#pasangBox{position:fixed;right:10px;top:calc(8px + env(safe-area-inset-top));display:none;z-index:5;align-items:center;gap:4px;background:#1a3fae;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.25);padding:2px 4px 2px 2px}
+#pasang{background:none;padding:7px 8px 7px 12px;font-size:12px;border-radius:999px}
+#pasangX{background:none;padding:4px 9px;font-size:16px;line-height:1;border-radius:999px;color:#cdd9ff}
+.galat{color:#b3261e;font-size:13px;min-height:18px}
+</style>
+</head>
+<body>
+<iframe id="app" title="TERAVIA" allow="camera; clipboard-write; fullscreen; geolocation" referrerpolicy="no-referrer-when-downgrade"></iframe>
+<div id="pasangBox"><button id="pasang" type="button">Pasang aplikasi</button><button id="pasangX" type="button" aria-label="Tutup">×</button></div>
+
+<div class="layar" id="lAtur"><div class="kartu">
+  <img src="icons/icon-192.png" alt="">
+  <h1>Alamat TERAVIA</h1>
+  <p>Tempel alamat TERAVIA yang berakhiran <b>/exec</b>. Cukup sekali; tersimpan di perangkat ini.</p>
+  <input id="url" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+  <div class="galat" id="galat"></div>
+  <button id="simpan" type="button">Simpan dan buka</button>
+</div></div>
+
+<div class="layar" id="lOff"><div class="kartu">
+  <img src="icons/icon-192.png" alt="">
+  <h1>Tidak ada sambungan internet</h1>
+  <p>TERAVIA memerlukan internet agar data pasien selalu terbaru dan aman. Periksa Wi‑Fi atau data seluler, lalu coba lagi.</p>
+  <button id="ulang" type="button">Coba lagi</button>
+</div></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); };
+  var KUNCI = 'teravia_url';
+  function simpanGet() { try { return localStorage.getItem(KUNCI) || ''; } catch (e) { return ''; } }
+  function alamat() { return (window.TERAVIA_URL || simpanGet() || '').trim(); }
+  // Akun biasa: /macros/s/ID/exec · Akun Google Workspace: /a/macros/DOMAIN/s/ID/exec
+  function sah(u) { return /^https:\/\/script\.google\.com\/(macros\/s\/[\w-]+|a\/macros\/[^\/]+\/s\/[\w-]+|a\/[^\/]+\/macros\/s\/[\w-]+)\/exec$/.test(u); }
+  function tampil(id, ya) { $(id).classList[ya ? 'add' : 'remove']('tampil'); }
+
+  function buka() {
+    var u = alamat();
+    if (!sah(u)) { tampil('lAtur', true); $('url').value = u; return; }
+    tampil('lAtur', false);
+    if (!navigator.onLine) { tampil('lOff', true); return; }
+    tampil('lOff', false);
+    // tautan masuk (mis. ?reset=… dari email) diteruskan ke aplikasi
+    var q = location.search || '';
+    var f = $('app'), tujuan = u + (q ? (u.indexOf('?') < 0 ? q : '&' + q.slice(1)) : '');
+    if (f.getAttribute('src') === tujuan && dimuat) return;   // sudah terbuka: jangan dimuat ulang (isian yang belum disimpan tidak hilang)
+    dimuat = false; f.setAttribute('src', tujuan);
+  }
+  var dimuat = false;
+  $('app').addEventListener('load', function () { if ($('app').getAttribute('src')) dimuat = navigator.onLine; });
+  $('simpan').onclick = function () {
+    var u = $('url').value.trim();
+    if (!sah(u)) { $('galat').textContent = 'Alamat tidak sesuai. Harus diawali https://script.google.com/ dan berakhiran /exec.'; return; }
+    try { localStorage.setItem(KUNCI, u); } catch (e) {}
+    $('galat').textContent = ''; buka();
+  };
+  $('ulang').onclick = buka;
+  window.addEventListener('online', buka);
+  window.addEventListener('offline', function () { tampil('lOff', true); });
+
+  // tombol pasang
+  var tunda = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); tunda = e; $('pasangBox').style.display = 'flex'; setTimeout(function () { $('pasangBox').style.display = 'none'; }, 15000); });
+  $('pasang').onclick = function () { if (!tunda) return; tunda.prompt(); tunda.userChoice.then(function () { tunda = null; $('pasangBox').style.display = 'none'; }); };
+  $('pasangX').onclick = function () { $('pasangBox').style.display = 'none'; };
+  window.addEventListener('appinstalled', function () { $('pasangBox').style.display = 'none'; });
+  if (window.matchMedia('(display-mode: standalone)').matches) $('pasangBox').style.display = 'none';
+
+  if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  buka();
+})();
+</script>
+</body>
+</html>
